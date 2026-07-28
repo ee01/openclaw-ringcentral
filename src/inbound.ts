@@ -234,8 +234,9 @@ export async function handleInboundPost(inCtx: InboundContext): Promise<void> {
   const effectiveThreadId = post.threadId ?? post.parentPostId;
   let bodyForAgent = currentBody;
   if (effectiveThreadId) {
+    const threadClient = ownerClient ?? botClient ?? sendClient;
     const threadHistory = await loadThreadContextText({
-      client: ownerClient ?? botClient,
+      client: threadClient,
       chatId,
       threadId: String(effectiveThreadId),
       limit: account.threadHistoryLimit,
