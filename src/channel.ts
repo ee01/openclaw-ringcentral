@@ -156,7 +156,12 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedAccount> = {
             ignoredTexts,
             abortSignal,
             onConnected: () => {
-              setStatus({ accountId, connected: true, statusState: "linked" } as never);
+              setStatus({
+                accountId,
+                connected: true,
+                statusState: "linked",
+                lastError: null,
+              } as never);
               ctx.log?.info("[ringcentral] bot websocket connected");
             },
             onDisconnected: (err) => {
@@ -180,7 +185,12 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedAccount> = {
             onMessage,
             onConnected: () => {
               if (!botClient) {
-                setStatus({ accountId, connected: true, statusState: "linked" } as never);
+                setStatus({
+                  accountId,
+                  connected: true,
+                  statusState: "linked",
+                  lastError: null,
+                } as never);
               }
               ctx.log?.info("[ringcentral] owner websocket connected");
             },
@@ -383,6 +393,12 @@ export const ringcentralPlugin: ChannelPlugin<ResolvedAccount> = {
       name: account.config.name ?? "RingCentral",
       enabled: account.config.enabled !== false,
       configured: !!account.botToken || hasOwnerCredentials(account),
+      running: runtime?.running ?? false,
+      lastStartAt: runtime?.lastStartAt ?? null,
+      lastStopAt: runtime?.lastStopAt ?? null,
+      lastError: runtime?.lastError ?? null,
+      lastInboundAt: runtime?.lastInboundAt ?? null,
+      lastOutboundAt: runtime?.lastOutboundAt ?? null,
       statusState: runtime?.connected ? "linked" : "configured",
       connected: runtime?.connected,
       label: account.config.name ?? "RingCentral",
