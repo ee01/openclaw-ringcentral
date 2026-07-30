@@ -54,6 +54,7 @@ describe("ringCentralConfigSchema", () => {
       },
       debugInboundMessages: true,
       historyMessageLimit: 250,
+      threadHistoryLimit: 20,
       homeChannel: "g-home",
       homeChannelName: "Home",
       requireMention: true,
@@ -91,6 +92,7 @@ describe("ringCentralConfigSchema", () => {
   it("rejects invalid replyToMode and out-of-range history limit", () => {
     expect(ringCentralConfigSchema.safeParse({ replyToMode: "bad" }).success).toBe(false);
     expect(ringCentralConfigSchema.safeParse({ historyMessageLimit: 1001 }).success).toBe(false);
+    expect(ringCentralConfigSchema.safeParse({ threadHistoryLimit: 101 }).success).toBe(false);
   });
 
   it("rejects non-integer textChunkLimit", () => {

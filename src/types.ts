@@ -250,6 +250,7 @@ export interface RingCentralConfig {
   attachments?: AttachmentDownloadConfig;
   debugInboundMessages?: boolean;
   historyMessageLimit?: number;
+  threadHistoryLimit?: number;
   homeChannel?: string;
   homeChannelName?: string;
   requireMention?: boolean;
@@ -289,6 +290,7 @@ export interface ResolvedAccount {
   attachments: Required<AttachmentDownloadConfig>;
   debugInboundMessages: boolean;
   historyMessageLimit: number;
+  threadHistoryLimit: number;
   homeChannel?: string;
   homeChannelName?: string;
   config: RingCentralConfig;
