@@ -73,6 +73,7 @@ export interface InboundContext {
   tracker: ThreadParticipationTracker;
   markOwnPost?: (postId: string) => void;
   log?: (message: string) => void;
+  reportAuthFailure?: (message: string) => void;
 }
 
 const identity = {
@@ -354,6 +355,7 @@ export async function handleInboundPost(inCtx: InboundContext): Promise<void> {
     tracker,
     markOwnPost: inCtx.markOwnPost,
     log,
+    reportAuthFailure: inCtx.reportAuthFailure,
   });
   try {
     await dispatcherOptions.onReplyStart();
@@ -483,6 +485,7 @@ function createDispatcherOptions(params: {
   tracker: ThreadParticipationTracker;
   markOwnPost?: (postId: string) => void;
   log: (message: string) => void;
+  reportAuthFailure?: (message: string) => void;
 }) {
   // RingCentral has no native typing API, so this channel uses one temporary
   // message as a typing indicator while OpenClaw's TypingController owns the
@@ -618,6 +621,9 @@ function createDispatcherOptions(params: {
     onError: (err: unknown, info: { kind: string }) => {
       void clearTypingPost();
       console.error(`[ringcentral] ${info.kind} reply error:`, err);
+      if (err instanceof RingCentralApiError && err.status === 401) {
+        params.reportAuthFailure?.(err.message);
+      }
     },
   };
 }

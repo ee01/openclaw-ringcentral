@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { RingCentralClient, createBotClient, createOwnerClient, createPrivateClient } from "./client.js";
+import {
+  RingCentralClient,
+  clearCachedOwnerClients,
+  createBotClient,
+  createOwnerClient,
+  createPrivateClient,
+} from "./client.js";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -31,6 +37,7 @@ function binaryResponse(data: Uint8Array, status = 200, contentType = "applicati
 beforeEach(() => {
   vi.useRealTimers();
   mockFetch.mockReset();
+  clearCachedOwnerClients();
 });
 
 describe("RingCentralClient", () => {
@@ -73,6 +80,52 @@ describe("RingCentralClient", () => {
       );
       expect(mockFetch.mock.calls[1][1].headers.Authorization).toBe("Bearer access-1");
       expect(mockFetch.mock.calls[3][1].headers.Authorization).toBe("Bearer access-2");
+    });
+
+    it("reuses owner client instances for identical credentials", () => {
+      const first = createOwnerClient("https://api.example.com", "cid", "cs", "jwt");
+      const second = createOwnerClient("https://api.example.com", "cid", "cs", "jwt");
+      expect(second).toBe(first);
+    });
+
+    it("refreshes JWT access token once after TokenInvalid 401", async () => {
+      const client = createOwnerClient("https://api.example.com", "cid-reauth", "cs", "jwt");
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse({ access_token: "access-old", expires_in: 3600 }))
+        .mockResolvedValueOnce(
+          jsonResponse(
+            { errorCode: "TokenInvalid", errors: [{ errorCode: "OAU-213", message: "Token not found" }] },
+            401,
+          ),
+        )
+        .mockResolvedValueOnce(jsonResponse({ access_token: "access-new", expires_in: 3600 }))
+        .mockResolvedValueOnce(jsonResponse({ id: "p1", text: "hello" }));
+
+      await expect(client.sendPost("chat1", "hello")).resolves.toMatchObject({ id: "p1" });
+      expect(mockFetch).toHaveBeenCalledTimes(4);
+      expect(mockFetch.mock.calls[0][0]).toBe("https://api.example.com/restapi/oauth/token");
+      expect(mockFetch.mock.calls[1][1].headers.Authorization).toBe("Bearer access-old");
+      expect(mockFetch.mock.calls[2][0]).toBe("https://api.example.com/restapi/oauth/token");
+      expect(mockFetch.mock.calls[3][1].headers.Authorization).toBe("Bearer access-new");
+    });
+
+    it("does not retry 401 when using a static bot token", async () => {
+      const client = createBotClient("https://api.example.com", "bot-tok");
+      mockFetch.mockResolvedValueOnce(
+        jsonResponse({ errorCode: "TokenInvalid", errors: [{ errorCode: "OAU-213" }] }, 401),
+      );
+      await expect(client.sendPost("chat1", "hello")).rejects.toThrow("HTTP 401");
+      expect(mockFetch).toHaveBeenCalledTimes(1);
+    });
+
+    it("does not refresh JWT on non-token 401 responses", async () => {
+      const client = createOwnerClient("https://api.example.com", "cid-forbidden", "cs", "jwt");
+      mockFetch
+        .mockResolvedValueOnce(jsonResponse({ access_token: "access-old", expires_in: 3600 }))
+        .mockResolvedValueOnce(jsonResponse({ errorCode: "InsufficientPermissions" }, 401));
+      await expect(client.sendPost("chat1", "hello")).rejects.toThrow("HTTP 401");
+      expect(mockFetch).toHaveBeenCalledTimes(2);
+      expect(mockFetch.mock.calls[0][0]).toBe("https://api.example.com/restapi/oauth/token");
     });
 
     it("strips trailing slash from serverUrl", async () => {

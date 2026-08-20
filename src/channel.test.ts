@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { resolveAccount } from "./accounts.js";
 import { ringcentralPlugin, selectSendClients } from "./channel.js";
-import { createBotClient, createOwnerClient } from "./client.js";
+import { clearCachedOwnerClients, createBotClient, createOwnerClient } from "./client.js";
 
 const mockFetch = vi.fn();
 vi.stubGlobal("fetch", mockFetch);
@@ -30,6 +30,7 @@ function cfg(overrides: Record<string, unknown> = {}) {
 
 beforeEach(() => {
   mockFetch.mockReset();
+  clearCachedOwnerClients();
 });
 
 describe("ringcentralPlugin outbound targets", () => {
